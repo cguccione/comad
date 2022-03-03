@@ -1,6 +1,7 @@
 #Custom to this repo
 testing_output/
 sample_output/
+data_tax_csv/
 
 #Mac
 .DS_Store
