@@ -125,7 +125,7 @@ def non_neutral_outliers(file_header, occurr_freqs, threshold = 0.5):
     
     #Display and export non-neutral microbes as csv
     print("\nTop NonNeutral Microbes")
-    display(standoutMicrobes)
+    print(standoutMicrobes)
     print('=========================================================\n')
     
     fn = file_header + '_NonNeutral_Outliers.csv'
