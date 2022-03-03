@@ -1,5 +1,11 @@
+#Custom to this repo
+testing_output/
+sample_output/
+
 #Mac
 .DS_Store
+
+#~~~End of Caitlin additions~~~
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

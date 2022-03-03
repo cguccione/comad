@@ -6,7 +6,7 @@ from datetime import datetime
 from lmfit import Parameters, Model, fit_report 
 from scipy.stats import beta 
 from statsmodels.stats.proportion import proportion_confint 
-from comad.neufit_utils import beta_cdf, subsample
+from comad.neufit_utils import beta_cdf, subsample, non_negative_int
 from comad.utils import biom2data_tax, non_neutral_outliers
 
 def comad_pipeline(biom_filename, output_filename, output_filepath):
@@ -164,6 +164,11 @@ def neufit(output_filename, output_folder_path, _data_filename,
     S., Hentschel, U., Schulenburg, H., Bosch, T. C. G. and Traulsen, A. 
     (2018). The Neutral Metaorganism. bioRxiv. https://doi.org/10.1101/367243
     '''
+
+    #Check that rarefaction and ignore levels are positive
+    non_negative_int(arg_rarefaction_level)
+    non_negative_int(arg_ignore_level)
+
     
     ##Added by Caitlin ~ Push output to file instead of printing to screen
     
