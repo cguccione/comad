@@ -1,0 +1,34 @@
+{% extends 'base-template.html' %}
+
+{% block head %}
+  <script src="{{ base_url }}/vendor/vega.min.js"></script>
+  <script src="{{ base_url }}/vendor/vega-embed.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="{{ base_url }}/vendor/css/spinkit.css">
+{% endblock %}
+
+{% block content %}
+  <div id="plot"></div>
+{% endblock %}
+
+{% block footer %}
+<script id="spec" type="application/json">{{ vega_spec }}</script>
+<script type="text/javascript">
+  var spec = {};
+
+  // Try and come up with a good initial estimate of plot dimensions,
+  // based on the browser dimensions.
+  var width = $('#plot').width() / 1.5;
+  var opts = {width: width, height: width / 2};
+  
+  vegaEmbed('#plot', spec, opts).then(function(result) {
+    result.view.logLevel(vega.Warn);
+    // Stash the view object in global namespace for debugging purposes.
+    // Check out https://vega.github.io/vega/docs/api/debugging/
+    // for more details.
+    window.v = result.view;
+  }).catch(function(error) {
+    // From 'js-error-handler.html'
+    handleErrors([error], $('#plot'));
+  });
+</script>
+{% endblock %}
