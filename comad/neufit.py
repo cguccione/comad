@@ -7,9 +7,11 @@ from lmfit import Parameters, Model, fit_report
 from scipy.stats import beta 
 from statsmodels.stats.proportion import proportion_confint 
 from comad.neufit_utils import beta_cdf, subsample, non_negative_int
-from comad.utils import biom2data_tax, non_neutral_outliers
+from comad.utils import biom2data_tax, tsv2data_tax, non_neutral_outliers
+from comad.plotting import neufit_plot
 
-def comad_pipeline(biom_filename, output_filename, output_filepath):
+def comad_pipeline(input_filename, output_filename, output_filepath, arg_rarefaction_level = 0,
+                   neufit_plot_bool = True, arg_ignore_level = 0, HP_Color = True):
     
     '''Calls all functions needed to create neutral model 
     
@@ -24,8 +26,21 @@ def comad_pipeline(biom_filename, output_filename, output_filepath):
         filename of all comad outputs.  
     output_filepath: str
         Path of all output files
+    arg_rarefaction_level: int, optional
+        Sets the rarefaction level. Leaving the default of 0 changes 
+        this value to the highest possible uniform read depth.
+    neufit_plot: bool, optional
+        Determines if Neufit plot is created/saved. Default is True.
+    arg_ignore_level: int, optional
+        Ignores OTUs below this abudance threshold; default is to use all 
+        OTUs regardless of abudance threshold. Value must be non-negative.
+    
     TODO
     ----
+    new
+    - Account for possiblity of no taxonomy ... or input taxonomy 
+    
+    old
     - Change dataset_type from 'hutchKraken' / 'gregTCGA' to biom input files, 
     biom input files missing taxonomy, ...
     - Remove the 'custom_filename' varible and create another funciton that 
@@ -41,18 +56,40 @@ def comad_pipeline(biom_filename, output_filename, output_filepath):
     output_folder_path =  output_filepath + '/' + output_filename 
     os.makedirs(output_folder_path, exist_ok=True)
     
-    #Convert data from biom to csv files for Neufit
-    fnData, fnTaxonomy = biom2data_tax(biom_filename, output_filename, output_folder_path)
-        
+    #Grab and format data/time
+    time = datetime.time(datetime.now())
+    date = datetime.date(datetime.now())
+    h,s = str(time).split(".") #Split string into hours/min and sec
+    
+    #Create file_header which holds the path for all future comad outpus
+    file_header = str(output_folder_path) +  \
+                  '/' + str(output_filename) + '_' + \
+                  str(date) + "_" + str(h)
+    
+    if input_filename.split('.')[1] == 'tsv':
+        #Convert data from tsv to csv files for Neufit
+        fnData, fnTaxonomy = tsv2data_tax(input_filename, output_filename, output_folder_path)
+    elif input_filename.split('.')[1] == 'biom':
+        #Convert data from biom to csv files for Neufit
+        fnData, fnTaxonomy = biom2data_tax(input_filename, output_filename, output_folder_path)
+    else:
+        print('Invlaid file format')
+        return
+    
     #Run Neufit
     occurr_freqs, n_reads, n_samples, r_square, beta_fit = neufit(output_filename, 
-                                                                  output_folder_path,
-                                                                  fnData, fnTaxonomy)
+                                                                  file_header,
+                                                                  fnData, fnTaxonomy,
+                                                                 arg_rarefaction_level,
+                                                                 arg_ignore_level)
+    #Create Neufit Plot
+    if neufit_plot_bool == True:
+        neufit_plot(occurr_freqs, beta_fit, n_samples, n_reads, r_square, file_header, HP_Color)
+        
 
 
-def neufit(output_filename, output_folder_path, _data_filename,
-           _taxonomy_filename, arg_ignore_level = 0, 
-           arg_rarefaction_level = 0):
+def neufit(output_filename, file_header, _data_filename,
+           _taxonomy_filename, arg_rarefaction_level, arg_ignore_level):
     
     '''Fits a neutral community model to species abundances
     
@@ -91,18 +128,18 @@ def neufit(output_filename, output_folder_path, _data_filename,
     output_filename: str
         Name/nickname of dataset (ex. 'combined'). Will be incorperated into 
         filename of all comad outputs.     
-    output_folder_path: str
+    file_header: str
         Path of all output files
     _data_filename: str, path
         The path to []_data.csv file; often an OTU abudance table. 
     _taxonomy_filename: str, path
         The path to []_taxonomy.csv; corresponding taxonomic information.
-    arg_ignore_level: int, optional
-        Ignores OTUs below this abudance threshold; default is to use all 
-        OTUs regardless of abudance threshold. Value must be non-negative.
-    arg_rarefaction_level: int, optional
+    arg_rarefaction_level: int
         Sets the rarefaction level. Leaving the default of 0 changes 
         this value to the highest possible uniform read depth. 
+    arg_ignore_level: int
+        Ignores OTUs below this abudance threshold; default is to use all 
+        OTUs regardless of abudance threshold. Value must be non-negative.
     
     Returns
     -------
@@ -172,16 +209,6 @@ def neufit(output_filename, output_folder_path, _data_filename,
     
     ##Added by Caitlin ~ Push output to file instead of printing to screen
     
-    #Grab and format data/time
-    time = datetime.time(datetime.now())
-    date = datetime.date(datetime.now())
-    h,s = str(time).split(".") #Split string into hours/min and sec
-    
-    #Create file_header which holds the path for all future comad outpus
-    file_header = str(output_folder_path) +  \
-                  '/' + str(output_filename) + '_' + \
-                  str(date) + "_" + str(h)
-    
     #Create and open file for Neufit Output txt file
     fn= str(file_header) + ".txt"
     file = open(fn, 'w')
@@ -244,11 +271,12 @@ def neufit(output_filename, output_folder_path, _data_filename,
     occurr_freqs['occurrence'] = occurrence_frequency
     occurr_freqs = occurr_freqs.sort_values(by=['mean_abundance'])
 
-    # Join with taxonomic information (optional)
-    if _taxonomy_filename != None: #Changed <> to !=
-        taxonomy = pd.read_table(_taxonomy_filename, header=0, 
-                                     index_col=0, sep='\t')
-        occurr_freqs = occurr_freqs.join(taxonomy)
+    if _taxonomy_filename != None:
+        # Join with taxonomic information (optional)
+        if _taxonomy_filename != None: #Changed <> to !=
+            taxonomy = pd.read_table(_taxonomy_filename, header=0, 
+                                         index_col=0, sep='\t')
+            occurr_freqs = occurr_freqs.join(taxonomy)
         
     # Fit the neutral model
     params = Parameters()

@@ -32,6 +32,11 @@ def biom2data_tax(biom_filename, output_filename, output_folder_path):
       
      TODO
      ----
+     new
+     - Need to make taxonomy optional or an input
+     - Change csv to tsv 
+     
+     old
      - Insure there isn't a better way to inpur filename
      - Make sure the path direction is clear for all inputs
      - Add more clear description of csv files 
@@ -54,12 +59,75 @@ def biom2data_tax(biom_filename, output_filename, output_folder_path):
     fnD = data_tax_path +  output_filename + '_data.csv'
     pandas_featureTable.to_csv(fnD, sep='\t')
     
+    '''
     #Create _taxonomy.csv
     pandas_TaxTable = pd.DataFrame(featureTable.metadata_to_dataframe('observation'))
     pandas_TaxTable.set_axis(['Kingdom', 'Phylum', 'Class', 'Order',
                               'Family', 'Genus', 'Species'], axis=1)
     fnT = data_tax_path + output_filename + '_taxonomy.csv'
     pandas_TaxTable.to_csv(fnT, sep='\t')
+    '''
+    
+    fnT = None
+    
+    return(fnD, fnT)
+
+def tsv2data_tax(tsv_filename, output_filename, output_folder_path):
+    '''Imports tsv file -> pandas dataframe -> data.csv, taxonomy.csv 
+    
+    NEED TO UPDATE
+    
+    Written by: Caitlin Guccione, 08-25-2021
+    
+    Parameters
+    ----------
+    tsv_filename: str
+        The filename of tsv file
+    output_filename: str
+        The filename to be used as the header in _data.csv and
+        _taxonomy.csv files
+    output_folder_path: str
+        Path of all output files
+
+     Returns
+     -------
+    fnD: str
+        The file location of [name]_data.csv
+    csv file
+        Creates[name]_data.csv, a data.csv file needed to run Neufit 
+    fnT: str
+        The file location of [name]_taxonomy.csv
+    csv file
+        Creates [name]_taxonomy.csv, a taxonomy.csv file needed
+        to run Neufit
+      
+     TODO
+     ----
+     new
+     - Add option to input taxonomy
+     - Change csv to tsv 
+     
+     old
+     - Insure there isn't a better way to inpur filename
+     - Make sure the path direction is clear for all inputs
+     - Add more clear description of csv files 
+     
+      '''
+
+    #Create folder for _data.csv and _tax.csv files for Neufit input
+    data_tax_path = output_folder_path + '/data_tax_csv/'
+    os.makedirs(data_tax_path, exist_ok=True) 
+
+    
+    #Import data as _data.csv
+    pandas_featureTable = pd.read_csv(tsv_filename, sep = '\t', index_col = 0)
+    #pandas_featureTable = pandas_featureTable.T
+
+    fnD = data_tax_path +  output_filename + '_data.csv'
+    pandas_featureTable.to_csv(fnD, sep='\t')
+    
+    
+    fnT = None
     
     return(fnD, fnT)
 
